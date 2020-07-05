@@ -1,0 +1,23 @@
+{
+    "name": "liuwave/fc-thinkphp",
+    "description": "deploy a thinkphp project on FC",
+    "type": "library",
+    "require": {
+        "php": ">=7.2.0",
+        "topthink/framework": "^6.0.0",
+        "ringcentral/psr7": "^1.0@dev"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "liuwave",
+            "email": "liuwave@qq.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "liuwave\\fc\\think\\": "src/"
+        }
+    }
+}
