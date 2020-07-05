@@ -5,32 +5,56 @@
  * Date: 2020/7/5 21:33
  * Description:
  */
+namespace liuwave\fc\think;
 
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
 use Psr\Http\Message\ServerRequestInterface;
 
+/**
+ * Class FcThink
+ */
 class FcThink
 {
     
-    private $request = null;
+    /**
+     * @var \think\Request
+     */
+    private $request;
     
-    private $app = null;
+    /**
+     * @var ServerRequestInterface $fcRequest
+     */
+    private $fcRequest;
+    
+    /**
+     * @var \think\App
+     */
+    private $app ;
     
     /**
      * @var string
      */
-    private $rootDir = '/';
+    private $rootDir = '/code';
     
+    /**
+     * @var string
+     */
     private $runtimePath = '/tmp';
     /**
      * @var
      */
     private $queryString;
     
+    /**
+     * FcThink constructor.
+     *
+     * @param string $root
+     * @param string $runtimePath
+     */
     public function __construct(
       string $root = DIRECTORY_SEPARATOR.'code'.DIRECTORY_SEPARATOR.'api',
-      string $runtimePath = DIRECTORY_SEPARATOR.'tmp'.DIRECTORY_SEPARATOR
+      string $runtimePath = DIRECTORY_SEPARATOR.'tmp'
     ) {
         //
         $this->rootDir     = $root.DIRECTORY_SEPARATOR.'public';
@@ -40,10 +64,14 @@ class FcThink
         $this->request = $this->app->request;
     }
     
-    public function run(ServerRequestInterface $fcRequest)
+    /**
+     * @return \think\Response
+     */
+    public function run()
     {
         $http     = $this->app->http;
         $response = $http->run($this->request);
+        $http->end($response);
         /**
          *解决 Cannot modify header information - headers already sent by (output started at xx的问题
          * @link https://developer.aliyun.com/article/683415
@@ -59,7 +87,6 @@ class FcThink
               ($option[ 'httponly' ] ? "; httponly" : '');
         }
         $response->header(['Set-Cookie' => $cookies]);
-        
         return $response;
     }
     
@@ -70,18 +97,19 @@ class FcThink
      */
     public function parse(ServerRequestInterface $fcRequest)
     {
-        $requestURI    = $fcRequest->getAttribute('requestURI');
-        $type          = \strtolower($fcRequest->getHeaderLine('Content-Type'));
+        $this->fcRequest=$fcRequest;
+        $requestURI    = $this->fcRequest->getAttribute('requestURI');
+        $type          = \strtolower($this->fcRequest->getHeaderLine('Content-Type'));
         [$type] = \explode(';', $type);
         $uriArray          = explode('?', $requestURI);
         $this->queryString = $uriArray[ 1 ] ?? '';
         
-        $this->parseHeaders($fcRequest)
-          ->parseServerParams($fcRequest)
-          ->parseCookie($fcRequest);
+        $this->parseHeaders()
+          ->parseServerParams()
+          ->parseCookie();
         
         if ($fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
-            $this->parseFiles($fcRequest);
+            $this->parseFiles();
         }
         $this->request->withGet($fcRequest->getQueryParams())
           ->setMethod($fcRequest->getMethod())
@@ -94,11 +122,9 @@ class FcThink
     }
     
     /**
-     * @param \Psr\Http\Message\ServerRequestInterface $fcRequest
-     *
      * @return $this
      */
-    private function parseHeaders(ServerRequestInterface $fcRequest)
+    private function parseHeaders()
     {
         $headers = array_merge(
           $this->request->header(),
@@ -106,7 +132,7 @@ class FcThink
             function ($item) {
                 return $item[ 0 ] ?? '';
             },
-            $fcRequest->getHeaders()
+            $this->fcRequest->getHeaders()
           )
         );
         
@@ -116,13 +142,11 @@ class FcThink
     }
     
     /**
-     * @param \Psr\Http\Message\ServerRequestInterface $fcRequest
-     *
      * @return $this
      */
-    private function parseCookie(ServerRequestInterface $fcRequest)
+    private function parseCookie()
     {
-        $line    = preg_replace('/^Set-Cookie: /i', '', trim($fcRequest->getHeaderLine('Cookie')));
+        $line    = preg_replace('/^Set-Cookie: /i', '', trim($this->fcRequest->getHeaderLine('Cookie')));
         $array   = explode(';', $line);
         $cookies = [
           'cookies' => [],
@@ -151,43 +175,41 @@ class FcThink
             }
         }
         
-        $this->request->withCookie(array_merge($fcRequest->getCookieParams(), $cookies[ 'cookies' ]));
+        $this->request->withCookie(array_merge($this->fcRequest->getCookieParams(), $cookies[ 'cookies' ]));
         
         return $this;
     }
     
     /**
-     * @param \Psr\Http\Message\ServerRequestInterface $fcRequest
-     *
      * @return $this
      */
-    private function parseServerParams(ServerRequestInterface $fcRequest)
+    private function parseServerParams()
     {
         $servers = array_merge(
-          (array)$fcRequest->getServerParams(),
+          (array)$this->fcRequest->getServerParams(),
           [
             'DOCUMENT_ROOT'                  => $this->rootDir,
               //'REMOTE_ADDR'                    => $request->getAttribute('clientIP'),
               // 'REMOTE_PORT'                    => FC_CGI_REMOTE_PORT,
             'SERVER_SOFTWARE'                => FC_CGI_SERVER_SOFTWARE,
             'SERVER_PROTOCOL'                => FC_CGI_SERVER_PROTOCOL,
-            'SERVER_NAME'                    => $fcRequest->getHeaderLine('host'),
+            'SERVER_NAME'                    => $this->fcRequest->getHeaderLine('host'),
             'SERVER_PORT'                    => '80',
-            'REQUEST_URI'                    => $fcRequest->getAttribute('requestURI'),
-            'REQUEST_METHOD'                 => $fcRequest->getMethod(),
+            'REQUEST_URI'                    => $this->fcRequest->getAttribute('requestURI'),
+            'REQUEST_METHOD'                 => $this->fcRequest->getMethod(),
             'SCRIPT_NAME'                    => "/index.php",
             'SCRIPT_FILENAME'                => $this->rootDir."/index.php",
-            'PATH_INFO'                      => $fcRequest->getAttribute('path'),
-            'PHP_SELF'                       => "/index.php?s=".($fcRequest->getAttribute('path')),
+            'PATH_INFO'                      => $this->fcRequest->getAttribute('path'),
+            'PHP_SELF'                       => "/index.php?s=".($this->fcRequest->getAttribute('path')),
             'QUERY_STRING'                   => $this->queryString,
-            'HTTP_HOST'                      => $fcRequest->getHeaderLine('host'),
+            'HTTP_HOST'                      => $this->fcRequest->getHeaderLine('host'),
               //'HTTP_CONNECTION'=>'',
-            'HTTP_CACHE_CONTROL'             => $fcRequest->getHeaderLine('Cache-Control'),
-            'HTTP_UPGRADE_INSECURE_REQUESTS' => $fcRequest->getHeaderLine('Upgrade-Insecure-Requests'),
-            'HTTP_USER_AGENT'                => $fcRequest->getHeaderLine('User-Agent'),
-            'HTTP_ACCEPT'                    => $fcRequest->getHeaderLine('Accept'),
-            'HTTP_ACCEPT_LANGUAGE'           => $fcRequest->getHeaderLine('Accept-Language'),
-            'HTTP_COOKIE'                    => $fcRequest->getHeaderLine('Cookie'),
+            'HTTP_CACHE_CONTROL'             => $this->fcRequest->getHeaderLine('Cache-Control'),
+            'HTTP_UPGRADE_INSECURE_REQUESTS' => $this->fcRequest->getHeaderLine('Upgrade-Insecure-Requests'),
+            'HTTP_USER_AGENT'                => $this->fcRequest->getHeaderLine('User-Agent'),
+            'HTTP_ACCEPT'                    => $this->fcRequest->getHeaderLine('Accept'),
+            'HTTP_ACCEPT_LANGUAGE'           => $this->fcRequest->getHeaderLine('Accept-Language'),
+            'HTTP_COOKIE'                    => $this->fcRequest->getHeaderLine('Cookie'),
           ]
         );
         
@@ -197,18 +219,16 @@ class FcThink
     }
     
     /**
-     * @param \Psr\Http\Message\ServerRequestInterface $fcRequest
-     *
      * @return $this
      * @link https://github.com/vangie/fc-file-transfer/blob/master/php/index.php
      */
-    private function parseFiles(ServerRequestInterface $fcRequest)
+    private function parseFiles()
     {
         $UPLOADED_DIR = $this->runtimePath.DIRECTORY_SEPARATOR.'uploaded';
         if (!file_exists($UPLOADED_DIR)) {
             mkdir($UPLOADED_DIR, 0755, true);
         }
-        $parsedRequest = (new Parser())->parse($fcRequest);
+        $parsedRequest = (new Parser())->parse($this->fcRequest);
         $uploadsFiles  = $parsedRequest->getUploadedFiles();
         $files         = [];
         
