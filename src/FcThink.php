@@ -61,7 +61,7 @@ class FcThink
     ) {
         //
         $this->rootDir     = $root.DIRECTORY_SEPARATOR.'public';
-        $this->runtimePath = $runtimePath;
+        $this->runtimePath = rtrim($runtimePath, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
         $this->app         = new App($root);
         $this->app->setRuntimePath($this->runtimePath);
         $this->request = $this->app->request;
