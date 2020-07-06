@@ -5,11 +5,14 @@
  * Date: 2020/7/5 21:33
  * Description:
  */
+
 namespace liuwave\fc\think;
 
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
 use Psr\Http\Message\ServerRequestInterface;
+use think\App;
+use think\facade\Cookie;
 
 /**
  * Class FcThink
@@ -30,7 +33,7 @@ class FcThink
     /**
      * @var \think\App
      */
-    private $app ;
+    private $app;
     
     /**
      * @var string
@@ -59,7 +62,7 @@ class FcThink
         //
         $this->rootDir     = $root.DIRECTORY_SEPARATOR.'public';
         $this->runtimePath = $runtimePath;
-        $this->app         = new \think\App($root);
+        $this->app         = new App($root);
         $this->app->setRuntimePath($this->runtimePath);
         $this->request = $this->app->request;
     }
@@ -77,7 +80,7 @@ class FcThink
          * @link https://developer.aliyun.com/article/683415
          */
         $cookies = [];
-        foreach (\think\facade\Cookie::getCookie() as $name => $val) {
+        foreach (Cookie::getCookie() as $name => $val) {
             [$value, $expire, $option] = $val;
             $cookies[] = "{$name}={$value}".
               ($expire > 0 ? "; expires=".gmstrftime("%A, %d-%b-%Y %H:%M:%S GMT", $expire + (86400 * 365)) : '').
@@ -87,7 +90,15 @@ class FcThink
               ($option[ 'httponly' ] ? "; httponly" : '');
         }
         $response->header(['Set-Cookie' => $cookies]);
+        
         return $response;
+    }
+    
+    public function withHeader(array $headers = [])
+    {
+        $this->request->withHeader(array_merge($this->request->header(), $headers));
+        
+        return $this;
     }
     
     /**
@@ -97,16 +108,16 @@ class FcThink
      */
     public function parse(ServerRequestInterface $fcRequest)
     {
-        $this->fcRequest=$fcRequest;
-        $requestURI    = $this->fcRequest->getAttribute('requestURI');
-        $type          = \strtolower($this->fcRequest->getHeaderLine('Content-Type'));
-        [$type] = \explode(';', $type);
+        $this->fcRequest = $fcRequest;
+        $requestURI      = $this->fcRequest->getAttribute('requestURI');
+        $type            = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
+        [$type] = explode(';', $type);
         $uriArray          = explode('?', $requestURI);
         $this->queryString = $uriArray[ 1 ] ?? '';
         
         $this->parseHeaders()
-          ->parseServerParams()
-          ->parseCookie();
+          ->parseCookie()
+          ->parseServerParams();
         
         if ($fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
             $this->parseFiles();
@@ -126,8 +137,7 @@ class FcThink
      */
     private function parseHeaders()
     {
-        $headers = array_merge(
-          $this->request->header(),
+        return $this->withHeader(
           array_map(
             function ($item) {
                 return $item[ 0 ] ?? '';
@@ -135,10 +145,6 @@ class FcThink
             $this->fcRequest->getHeaders()
           )
         );
-        
-        $this->request->withHeader($headers);
-        
-        return $this;
     }
     
     /**
@@ -186,6 +192,7 @@ class FcThink
     private function parseServerParams()
     {
         $servers = array_merge(
+          (array)$this->request->server(),
           (array)$this->fcRequest->getServerParams(),
           [
             'DOCUMENT_ROOT'                  => $this->rootDir,
@@ -255,11 +262,11 @@ class FcThink
             }
             else {
                 /**@var $uploadsFile UploadedFile */
-        
+                
                 $filename = $uploadsFile->getClientFilename();
-        
+                
                 $tmpName = $UPLOADED_DIR.DIRECTORY_SEPARATOR.md5($filename).'.tmp';
-        
+                
                 $uploadsFile->moveTo($tmpName);
                 $files[ $key ] = [
                   'tmp_name' => $tmpName,
