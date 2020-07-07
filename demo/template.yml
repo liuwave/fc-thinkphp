@@ -1,0 +1,32 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Resources:
+  test-think:
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Role: 'acs:ram::1015034173526408:role/AliyunFCLogExecutionRole'
+      LogConfig:
+        Project: aliyun-fc-cn-beijing-9884c9bf-f2ea-52e1-ac98-a724f9cab91d
+        Logstore: function-log
+      InternetAccess: true
+    test-fun:
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: index.handler
+        Runtime: php7.2
+        Timeout: 60
+        MemorySize: 128
+        EnvironmentVariables: {}
+        CodeUri: ./test-think/test-fun
+      Events:
+        test-fun:
+          Type: HTTP
+          Properties:
+            AuthType: anonymous
+            Methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - HEAD
+              - PATCH
