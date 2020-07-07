@@ -191,6 +191,17 @@ fun deploy -y
 若使用并开启了[liuwave/think-log-driver-fc](https://github.com/liuwave/think-log-driver-fc)可在函数计算的对应函数的日志查询功能中查看日志。
 
 
+
+### 文件上传，支持单文件和多文件上传
+
+参考：
+- [thinkphp6.0上传文件](https://www.kancloud.cn/manual/thinkphp6_0/1037639)
+- [liuwave/think-filesystem-driver-oss](https://github.com/liuwave/think-filesystem-driver-oss)
+
+> 注，函数计算限制，仅支持不超过6M大小的文件上传或下载，参见[使用限制](https://help.aliyun.com/document_detail/51907.html?source=5176.11533457&userCode=re2rax3m&type=copy)
+
+
+
 ## BUG提交
 
 [Issue](https://github.com/liuwave/fc-thinkphp/issues)
