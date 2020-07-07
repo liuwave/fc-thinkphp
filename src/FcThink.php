@@ -51,6 +51,8 @@ class FcThink
      */
     private $queryString;
     
+    private $config;
+    
     /*
      * @var bool
      *
@@ -68,23 +70,27 @@ class FcThink
      * @param ServerRequestInterface $fcRequest
      * @param string                 $root
      * @param string                 $runtimePath
-     * @param bool                   $checkFile
+     * @param array                  $config
      */
     public function __construct(
       ServerRequestInterface $fcRequest,
       string $root = '/code/tp',
       string $runtimePath = '/tmp/',
-      bool $checkFile = true
+      array $config = []
     ) {
         $this->rootDir     = rtrim($root, '/');
         $this->runtimePath = rtrim($runtimePath, '/').'/';
         $this->fcRequest   = $fcRequest;
-        if ($checkFile) {
+        $this->config      = (array)$config;
+        
+        $ignoreFile = !empty($this->config[ 'ignore_file' ]) ? true : false;
+        
+        if (!$ignoreFile) {
             $path     = $this->fcRequest->getAttribute('path');
             $filename = rawurldecode($this->rootDir.'/public'.$path);
-            $pathinfo = pathinfo($filename);
-            if (isset($pathinfo[ 'extension' ]) &&
-              strtolower($pathinfo[ 'extension' ]) !== 'php' &&
+            $pathInfo = pathinfo($filename);
+            if (isset($pathInfo[ 'extension' ]) &&
+              strtolower($pathInfo[ 'extension' ]) !== 'php' &&
               file_exists($this->filename) &&
               is_file($this->filename)) {
                 $this->filename = $filename;
