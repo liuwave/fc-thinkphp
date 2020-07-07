@@ -1,6 +1,6 @@
 {
     "name": "liuwave/fc-thinkphp",
-    "description": "deploy a thinkphp project on FC",
+    "description": "deploy a thinkphp project on FC。在函数计算上部署thinkphp项目。",
     "type": "library",
     "require": {
         "php": ">=7.2.0",
