@@ -34,7 +34,7 @@ function handler($request, $context) : Response
 
 ### 1、准备
 
-- 开通 [函数计算](http://fc.console.aliyun.com),每月免费100万次请求，免费40万(CU-秒)执行时间，日IP在1000以下的博客站足够用。
+- 开通 [函数计算](https://www.aliyun.com/product/fc?source=5176.11533457&userCode=re2rax3m&type=copy),每月免费100万次请求，免费40万(CU-秒)执行时间，日IP在1000以下的博客站足够用。
 - (可选)开通oss
 - (可选)开通NAS
 - 域名
@@ -44,7 +44,7 @@ function handler($request, $context) : Response
 
 ### 2、安装和配置fun工具
 
-安装和配置参见：[安装Fun](https://github.com/alibaba/funcraft/blob/master/docs/usage/installation-zh.md)
+安装和配置参见：[安装Fun](https://help.aliyun.com/document_detail/161136.html?source=5176.11533457&userCode=re2rax3m&type=copy)
 
 
 ### 3、在函数计算控制台创建服务
@@ -168,7 +168,7 @@ fun deploy -y
 
 ### VPC权限
 
-如需访问OSS、NAS等资源，需要配置VPC访问权限：[配置 VPC 功能](https://help.aliyun.com/knowledge_detail/72959.html?spm=a2c4g.11186623.6.621.22d43111qBrncd)
+如需访问OSS、NAS等资源，需要配置VPC访问权限：[配置 VPC 功能](https://help.aliyun.com/knowledge_detail/72959.html?source=5176.11533457&userCode=re2rax3m&type=copy)
 
 ### 使用OSS上传文件
 
@@ -177,7 +177,7 @@ fun deploy -y
 
 ### 使用NAS
 
-参见：[挂载NAS访问](https://help.aliyun.com/document_detail/87401.html)
+参见：[挂载NAS访问](https://help.aliyun.com/document_detail/87401.html?source=5176.11533457&userCode=re2rax3m&type=copy)
 
 ### 使用函数计算自带的日志功能
 
