@@ -11,6 +11,8 @@ namespace liuwave\fc\think;
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
 use Psr\Http\Message\ServerRequestInterface;
+use RingCentral\Psr7\Request;
+use RingCentral\Psr7\Response;
 use think\App;
 use think\facade\Cookie;
 
@@ -26,7 +28,7 @@ class FcThink
     private $request;
     
     /**
-     * @var ServerRequestInterface $fcRequest
+     * @var Request $fcRequest
      */
     private $fcRequest;
     
@@ -38,47 +40,113 @@ class FcThink
     /**
      * @var string
      */
-    private $rootDir = '/code';
+    private $rootDir = '/code/tp';
     
     /**
      * @var string
      */
-    private $runtimePath = '/tmp';
+    private $runtimePath = '/tmp/';
     /**
      * @var
      */
     private $queryString;
     
+    /*
+     * @var bool
+     *
+     *
+     * */
+    
+    /**
+     * @var null
+     */
+    private $filename;
+    
     /**
      * FcThink constructor.
      *
-     * @param string $root
-     * @param string $runtimePath
+     * @param ServerRequestInterface $fcRequest
+     * @param string                 $root
+     * @param string                 $runtimePath
+     * @param bool                   $checkFile
      */
     public function __construct(
-      string $root = DIRECTORY_SEPARATOR.'code'.DIRECTORY_SEPARATOR.'api',
-      string $runtimePath = DIRECTORY_SEPARATOR.'tmp'
+      ServerRequestInterface $fcRequest,
+      string $root = '/code/tp',
+      string $runtimePath = '/tmp/',
+      bool $checkFile = true
     ) {
-        //
-        $this->rootDir     = $root.DIRECTORY_SEPARATOR.'public';
-        $this->runtimePath = rtrim($runtimePath, DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-        $this->app         = new App($root);
+        $this->rootDir     = rtrim($root, '/');
+        $this->runtimePath = rtrim($runtimePath, '/').'/';
+        $this->fcRequest   = $fcRequest;
+        if ($checkFile) {
+            $path     = $this->fcRequest->getAttribute('path');
+            $filename = rawurldecode($this->rootDir.'/public'.$path);
+            $pathinfo = pathinfo($filename);
+            if (isset($pathinfo[ 'extension' ]) &&
+              strtolower($pathinfo[ 'extension' ]) !== 'php' &&
+              file_exists($this->filename) &&
+              is_file($this->filename)) {
+                $this->filename = $filename;
+                
+                return;
+            }
+        }
+        $this->filename = null;
+        $this->app      = new App($this->rootDir);
         $this->app->setRuntimePath($this->runtimePath);
         $this->request = $this->app->request;
+        $this->parse();
     }
     
     /**
-     * @return \think\Response
+     * @return Response
      */
     public function run()
     {
+        if ($this->filename) {
+            $handle   = fopen($this->filename, "r");
+            $contents = fread($handle, filesize($this->filename));
+            fclose($handle);
+            
+            return new Response(
+              200, [
+              'Content-Type'  => $GLOBALS[ 'fcPhpCgiProxy' ]->getMimeType($this->filename),
+              'Cache-Control' => "max-age=8640000",
+              'Accept-Ranges' => 'bytes',
+            ], $contents
+            );
+        }
         $http     = $this->app->http;
         $response = $http->run($this->request);
         $http->end($response);
+        
+        $response->header(['Set-Cookie' => $this->getHeaderCookie()]);
+        
+        return new Response($response->getCode(), $response->getHeader(), $response->getContent());
+    }
+    
+    /**
+     * @param array $headers
+     *
+     * @return $this
+     */
+    public function withHeader(array $headers = [])
+    {
+        if ($this->request) {
+            $this->request->withHeader(array_merge($this->request->header(), $headers));
+        }
+        
+        return $this;
+    }
+    
+    private function getHeaderCookie()
+    {
         /**
          *解决 Cannot modify header information - headers already sent by (output started at xx的问题
          * @link https://developer.aliyun.com/article/683415
          */
+        
         $cookies = [];
         foreach (Cookie::getCookie() as $name => $val) {
             [$value, $expire, $option] = $val;
@@ -89,28 +157,18 @@ class FcThink
               ($option[ 'secure' ] ? "; secure" : '').
               ($option[ 'httponly' ] ? "; httponly" : '');
         }
-        $response->header(['Set-Cookie' => $cookies]);
         
-        return $response;
-    }
-    
-    public function withHeader(array $headers = [])
-    {
-        $this->request->withHeader(array_merge($this->request->header(), $headers));
-        
-        return $this;
+        return $cookies;
     }
     
     /**
-     * @param \Psr\Http\Message\ServerRequestInterface $fcRequest
      *
      * @return $this
      */
-    public function parse(ServerRequestInterface $fcRequest)
+    private function parse()
     {
-        $this->fcRequest = $fcRequest;
-        $requestURI      = $this->fcRequest->getAttribute('requestURI');
-        $type            = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
+        $requestURI = $this->fcRequest->getAttribute('requestURI');
+        $type       = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
         [$type] = explode(';', $type);
         $uriArray          = explode('?', $requestURI);
         $this->queryString = $uriArray[ 1 ] ?? '';
@@ -119,13 +177,13 @@ class FcThink
           ->parseCookie()
           ->parseServerParams();
         
-        if ($fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
+        if ($this->fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
             $this->parseFiles();
         }
-        $this->request->withGet($fcRequest->getQueryParams())
-          ->setMethod($fcRequest->getMethod())
+        $this->request->withGet($this->fcRequest->getQueryParams())
+          ->setMethod($this->fcRequest->getMethod())
           ->withInput(
-            $fcRequest->getBody()
+            $this->fcRequest->getBody()
               ->getContents()
           );
         
@@ -195,7 +253,7 @@ class FcThink
           (array)$this->request->server(),
           (array)$this->fcRequest->getServerParams(),
           [
-            'DOCUMENT_ROOT'                  => $this->rootDir,
+            'DOCUMENT_ROOT'                  => $this->rootDir.'/public',
               //'REMOTE_ADDR'                    => $request->getAttribute('clientIP'),
               // 'REMOTE_PORT'                    => FC_CGI_REMOTE_PORT,
             'SERVER_SOFTWARE'                => FC_CGI_SERVER_SOFTWARE,
@@ -205,7 +263,7 @@ class FcThink
             'REQUEST_URI'                    => $this->fcRequest->getAttribute('requestURI'),
             'REQUEST_METHOD'                 => $this->fcRequest->getMethod(),
             'SCRIPT_NAME'                    => "/index.php",
-            'SCRIPT_FILENAME'                => $this->rootDir."/index.php",
+            'SCRIPT_FILENAME'                => $this->rootDir."/public/index.php",
             'PATH_INFO'                      => $this->fcRequest->getAttribute('path'),
             'PHP_SELF'                       => "/index.php?s=".($this->fcRequest->getAttribute('path')),
             'QUERY_STRING'                   => $this->queryString,
@@ -231,7 +289,7 @@ class FcThink
      */
     private function parseFiles()
     {
-        $UPLOADED_DIR = $this->runtimePath.DIRECTORY_SEPARATOR.'uploaded';
+        $UPLOADED_DIR = $this->runtimePath.'/uploaded';
         if (!file_exists($UPLOADED_DIR)) {
             mkdir($UPLOADED_DIR, 0755, true);
         }
@@ -251,7 +309,7 @@ class FcThink
                 foreach ($uploadsFile as $k => $f) {
                     /**@var $f UploadedFile */
                     $filename = $f->getClientFilename();
-                    $tmpName  = $UPLOADED_DIR.DIRECTORY_SEPARATOR.md5($filename).'.tmp';
+                    $tmpName  = $UPLOADED_DIR.'/'.md5($filename).'.tmp';
                     $f->moveTo($tmpName);
                     $files[ $key ][ 'tmp_name' ][] = $tmpName;
                     $files[ $key ][ 'name' ][]     = $filename;
@@ -265,7 +323,7 @@ class FcThink
                 
                 $filename = $uploadsFile->getClientFilename();
                 
-                $tmpName = $UPLOADED_DIR.DIRECTORY_SEPARATOR.md5($filename).'.tmp';
+                $tmpName = $UPLOADED_DIR.'/'.md5($filename).'.tmp';
                 
                 $uploadsFile->moveTo($tmpName);
                 $files[ $key ] = [
