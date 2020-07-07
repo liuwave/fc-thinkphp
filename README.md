@@ -3,6 +3,10 @@
 
 这是一个使用阿里云函数计算 php runtime搭建serverless thinkphp6.0项目的插件，只需要在函数计算的http触发器入口函数添加几行代码就能让thinkphp6.0运行在函数计算的php运行环境下。
 
+## todo 
+
+- 支持cgi模式
+
 ## 快速开始
 
 首先在thinkphp6.0项目中安装插件：
