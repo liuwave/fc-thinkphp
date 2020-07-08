@@ -174,7 +174,9 @@ class FcThink
          */
         
         $cookies = [];
-        foreach (Cookie::getCookie() as $name => $val) {
+        
+        $sourceCookies=Cookie::getCookie();
+        foreach ($sourceCookies as $name => $val) {
             [$value, $expire, $option] = $val;
             $cookies[] = "{$name}={$value}".
               ($expire > 0 ? "; expires=".gmstrftime("%A, %d-%b-%Y %H:%M:%S GMT", $expire + (86400 * 365)) : '').
