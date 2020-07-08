@@ -2,6 +2,18 @@
     "name": "liuwave/fc-thinkphp",
     "description": "deploy a thinkphp project on FC。在函数计算上部署thinkphp项目。",
     "type": "library",
+    "keywords": [
+        "fc-thinkphp",
+        "函数计算",
+        "fc",
+        "log",
+        "thinkphp",
+        "oss",
+        "对象存储",
+        "php runtime",
+        "日志服务sls",
+        "阿里云"
+    ],
     "require": {
         "php": ">=7.2.0",
         "topthink/framework": "^6.0.0",
