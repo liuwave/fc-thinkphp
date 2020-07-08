@@ -24,7 +24,9 @@
         "topthink/framework": "6.0.x-dev",
         "topthink/think-orm": "^2.0",
         "liuwave/fc-thinkphp": "^0.0.3",
-        "liuwave/think-filesystem-driver-oss": "^1.0"
+        "liuwave/think-filesystem-driver-oss": "^1.0",
+        "topthink/think-view": "^1.0",
+        "liuwave/think-log-driver-sls": "^1.0"
     },
     "require-dev": {
         "symfony/var-dumper": "^4.2",

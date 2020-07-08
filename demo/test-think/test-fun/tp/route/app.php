@@ -16,3 +16,4 @@ Route::get('think', function () {
 
 Route::get('info', 'index/info');
 Route::post('upload', 'index/upload');
+Route::get('log', 'index/log');
