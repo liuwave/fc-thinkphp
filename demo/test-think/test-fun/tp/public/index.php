@@ -12,14 +12,13 @@
 // [ 应用入口文件 ]
 namespace think;
 
-
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';
 
 // 执行HTTP应用并响应
 
-$app=new App();
-$app->setRuntimePath($app->request->server('RUNTIME_PATH','/tsmp'));
-$http = $app->http;
+$app = new App();
+$app->setRuntimePath(getenv('PHP_RUNTIME_PATH') ? : '/tmp/');
+$http     = $app->http;
 $response = $http->run();
 
 $response->send();

@@ -76,7 +76,7 @@ class FcThink
         }
         $this->config[ 'root' ]         = rtrim($this->config[ 'root' ], '/');
         $this->config[ 'runtime_path' ] = rtrim($this->config[ 'runtime_path' ], '/').'/';
-        
+        putenv('PHP_RUNTIME_PATH='.$this->config[ 'runtime_path' ]);
         if (!$this->config[ 'ignore_file' ]) {
             $path     = $this->fcRequest->getAttribute('path');
             $filename = rawurldecode($this->config[ 'root' ].'/public'.$path);
@@ -175,7 +175,7 @@ class FcThink
         
         $cookies = [];
         
-        $sourceCookies=Cookie::getCookie();
+        $sourceCookies = Cookie::getCookie();
         foreach ($sourceCookies as $name => $val) {
             [$value, $expire, $option] = $val;
             $cookies[] = "{$name}={$value}".
@@ -301,7 +301,6 @@ class FcThink
               'HTTP_ACCEPT'                    => $this->fcRequest->getHeaderLine('Accept'),
               'HTTP_ACCEPT_LANGUAGE'           => $this->fcRequest->getHeaderLine('Accept-Language'),
               'HTTP_COOKIE'                    => $this->fcRequest->getHeaderLine('Cookie'),
-              'RUNTIME_PATH'                   => $this->config[ 'runtime_path' ],
             ],
             $this->context
           ),
