@@ -3,9 +3,8 @@
 
 这是一个使用阿里云函数计算 php runtime搭建serverless thinkphp6.0项目的插件，只需要在函数计算的http触发器入口函数添加几行代码就能让thinkphp6.0运行在函数计算的php运行环境下。
 
-## todo 
+示例：[http://test-think.oldmen.cn/](http://test-think.oldmen.cn/)
 
-- 支持cgi模式
 
 ## 快速开始
 
@@ -14,6 +13,31 @@
 ```shell script
 composer require liuwave/fc-thinkphp
 ```
+
+修改thinkphp项目的入口文件`/tp/public/index.php`(仅在cgi模式下需要修改(支持cli模式，默认cgi模式)):
+
+```php
+<?php
+
+// [ 应用入口文件 ]
+namespace think;
+
+
+require __DIR__ . '/../vendor/autoload.php';
+
+// 执行HTTP应用并响应
+// $http = (new App())->http;
+$app=new App();
+$app->setRuntimePath($app->request->server('RUNTIME_PATH','/tmp'));
+$http = $app->http;
+
+$response = $http->run();
+
+$response->send();
+
+$http->end($response);
+```
+
 
 函数计算入口`index.php`中，添加：
 
@@ -24,11 +48,43 @@ function handler($request, $context) : Response
        //设置thinkphp根目录
     $appPath=__DIR__ . '/tp';
     require $appPath . '/vendor/autoload.php';
-    return (new FcThink($request, $appPath, '/tmp/'))
-      ->withHeader(['context' => $context])
-      ->run();
+    return (new FcThink($request, $context,['root'=> $appPath, 'runtime_path'=>'/tmp/']))->run();
 }
 ```
+
+
+
+## API Reference
+
+### FcThink::__construct
+
+`\Psr\Http\Message\ServerRequestInterface $fcRequest,array $context,$config = []`
+
+#### $fcRequest 
+
+函数计算中http触发器传入的$request参数，遵循 PSR（HTTP message interfaces）标准。更多详情请参见 [PSR-7-http-message](https://github.com/php-fig/fig-standards/blob/master/accepted/PSR-7-http-message.md?spm=a2c4g.11186623.2.16.2ed5114fpZwWPC&file=PSR-7-http-message.md)。具体的代码定义遵循 [PSR Http Message](https://github.com/php-fig/http-message?spm=a2c4g.11186623.2.17.2ed5114fpZwWPC)。
+
+#### $context
+
+函数计算中http触发器传入的context 参数，参见[PHP 事件函数 中的 $context参数](https://help.aliyun.com/document_detail/89029.html?source=5176.11533457&userCode=re2rax3m&type=copy)
+
+#### $config
+
+配置参数，默认值为：
+
+
+```php
+
+ [
+      'is_cli'       => false,//是否为cli模式，默认为cgi模式
+      'ignore_file'  => false,//是否检测请求路径为存在的文件，如果忽略，则交由thinkphp 入库函数处理，默认为false，即若请求路径为文件(php后缀名除外)，直接返回文件内容
+      'root'         => '/code/tp',//thinkphp项目的root_path
+      'runtime_path' => '/tmp/',//缓存目录
+    ];
+```
+
+
+
 
 
 ## 新手入门
@@ -135,13 +191,35 @@ use liuwave\fc\think\FcThink;
 function handler($request, $context) : Response
 {
         //设置thinkphp根目录
-        $appPath=__DIR__ . '/tp';
-        require $appPath . '/vendor/autoload.php';
-        return (new FcThink($request, $appPath, '/tmp/'))
-          ->withHeader(['context' => $context])
-          ->run();
+    $appPath=__DIR__ . '/tp';
+    require $appPath . '/vendor/autoload.php';
+    return (new FcThink($request, $context,['root'=> $appPath, 'runtime_path'=>'/tmp/']))->run();
 }
 ```
+修改tp入口文件`test-think/test-fun/tp/public/index.php`(仅在cgi模式下需要修改):
+
+```php
+<?php
+
+// [ 应用入口文件 ]
+namespace think;
+
+
+require __DIR__ . '/../vendor/autoload.php';
+
+// 执行HTTP应用并响应
+// $http = (new App())->http;
+$app=new App();
+$app->setRuntimePath($app->request->server('RUNTIME_PATH','/tmp'));
+$http = $app->http;
+
+$response = $http->run();
+
+$response->send();
+
+$http->end($response);
+```
+
 
 ### 8、部署代码
 
@@ -168,6 +246,35 @@ fun deploy -y
 
 
 ## 参考
+
+### Cli模式 vs cgi模式
+
+默认为cgi模式，可切换为cli模式。
+
+#### CGI模式
+
+cgi不能在thinkphp项目中调用函数计算内置功能的对象如fcLogger/fcPhpCgiProxy/fcSysLogger。
+
+cgi是通过函数计算提供的$GLOBALS['fcPhpCgiProxy'] 对象实现：
+
+```php
+
+ requestPhpCgi($request, $docRoot, $phpFile = "index.php", $fastCgiParams = [], $options = []);
+
+```
+
+- $request: 跟 php http 触发器 入口的参数一致
+- $docRoot: thinkphp项目的根目录
+- $phpFile: 用于拼接 cgi 参数中的 SCRIPT_FILENAME 的默认参数
+- $fastCgiParams: 函数计算内部尽量根据fastCgiParams`覆盖一些参数 (reference: [cgi](https://en.wikipedia.org/wiki/Common_Gateway_Interface))
+- $options: array类型，可选参数， debug_show_cgi_params 设为 true ，会打印每次请求 php 解析时候的 cgi 参数， 默认为 false ；readWriteTimeout 设置解析的时间， 默认为 5 秒
+
+#### CLI模式
+
+CLI模式支持在thinkphp项目中调用函数计算内置功能的对象如fcLogger/fcPhpCgiProxy/fcSysLogger。
+
+参见[liuwave/think-log-driver-fc](https://github.com/liuwave/think-log-driver-fc)
+
 
 
 ### VPC权限

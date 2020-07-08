@@ -21,43 +21,35 @@ use think\facade\Cookie;
  */
 class FcThink
 {
+    /**
+     * @var \think\App
+     */
+    protected $app;
     
     /**
      * @var \think\Request
      */
-    private $request;
+    protected $request;
     
     /**
      * @var Request $fcRequest
      */
-    private $fcRequest;
+    protected $fcRequest;
     
     /**
-     * @var \think\App
+     * @var array
      */
-    private $app;
+    protected $config = [
+      'is_cli'       => false,
+      'ignore_file'  => false,
+      'root'         => '/code/tp',
+      'runtime_path' => '/tmp/',
+    ];
     
     /**
-     * @var string
+     * @var array
      */
-    private $rootDir = '/code/tp';
-    
-    /**
-     * @var string
-     */
-    private $runtimePath = '/tmp/';
-    /**
-     * @var
-     */
-    private $queryString;
-    
-    private $config;
-    
-    /*
-     * @var bool
-     *
-     *
-     * */
+    protected $context = [];
     
     /**
      * @var null
@@ -68,26 +60,26 @@ class FcThink
      * FcThink constructor.
      *
      * @param ServerRequestInterface $fcRequest
-     * @param string                 $root
-     * @param string                 $runtimePath
+     * @param array                  $context
      * @param array                  $config
      */
     public function __construct(
       ServerRequestInterface $fcRequest,
-      string $root = '/code/tp',
-      string $runtimePath = '/tmp/',
-      array $config = []
+      array $context,
+      $config = []
     ) {
-        $this->rootDir     = rtrim($root, '/');
-        $this->runtimePath = rtrim($runtimePath, '/').'/';
-        $this->fcRequest   = $fcRequest;
-        $this->config      = (array)$config;
+        $this->fcRequest = $fcRequest;
+        $this->context   = $this->parseContext($context);
         
-        $ignoreFile = !empty($this->config[ 'ignore_file' ]) ? true : false;
+        if (is_array($config)) {
+            $this->config = array_merge($this->config, $config);
+        }
+        $this->config[ 'root' ]         = rtrim($this->config[ 'root' ], '/');
+        $this->config[ 'runtime_path' ] = rtrim($this->config[ 'runtime_path' ], '/').'/';
         
-        if (!$ignoreFile) {
+        if (!$this->config[ 'ignore_file' ]) {
             $path     = $this->fcRequest->getAttribute('path');
-            $filename = rawurldecode($this->rootDir.'/public'.$path);
+            $filename = rawurldecode($this->config[ 'root' ].'/public'.$path);
             $pathInfo = pathinfo($filename);
             if (isset($pathInfo[ 'extension' ]) &&
               strtolower($pathInfo[ 'extension' ]) !== 'php' &&
@@ -98,11 +90,15 @@ class FcThink
                 return;
             }
         }
+        
         $this->filename = null;
-        $this->app      = new App($this->rootDir);
-        $this->app->setRuntimePath($this->runtimePath);
-        $this->request = $this->app->request;
-        $this->parse();
+        
+        if ($this->config[ 'is_cli' ]) {
+            $this->app = new App($this->config[ 'root' ]);
+            $this->app->setRuntimePath($this->config[ 'runtime_path' ]);
+            $this->request = $this->app->request;
+            $this->parse();
+        }
     }
     
     /**
@@ -123,30 +119,54 @@ class FcThink
             ], $contents
             );
         }
-        $http     = $this->app->http;
-        $response = $http->run($this->request);
-        $http->end($response);
         
-        $response->header(['Set-Cookie' => $this->getHeaderCookie()]);
-        
-        return new Response($response->getCode(), $response->getHeader(), $response->getContent());
+        if ($this->config[ 'is_cli' ]) {
+            $http     = $this->app->http;
+            $response = $http->run($this->request);
+            $http->end($response);
+            
+            $response->header(['Set-Cookie' => $this->getHeaderCookie()]);
+            
+            return new Response($response->getCode(), $response->getHeader(), $response->getContent());
+        }
+        else {
+            return $GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
+              $this->fcRequest,
+              $this->config[ 'root' ].'/public',
+              "index.php",
+              $this->parseServerParams(),
+              ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
+            );
+        }
     }
     
     /**
-     * @param array $headers
+     * @param array $context
      *
-     * @return $this
+     * @return array
      */
-    public function withHeader(array $headers = [])
+    protected function parseContext(array $context = []) : array
     {
-        if ($this->request) {
-            $this->request->withHeader(array_merge($this->request->header(), $headers));
+        $result = [];
+        
+        foreach ($context as $key => $value) {
+            if (is_array($value)) {
+                foreach ($value as $subKey => $subValue) {
+                    $result[ "context_{$key}_{$subKey}" ] = (string)$subValue;
+                }
+            }
+            else {
+                $result[ "context_{$key}" ] = (string)$value;
+            }
         }
         
-        return $this;
+        return $result;
     }
     
-    private function getHeaderCookie()
+    /**
+     * @return array
+     */
+    protected function getHeaderCookie()
     {
         /**
          *解决 Cannot modify header information - headers already sent by (output started at xx的问题
@@ -171,37 +191,35 @@ class FcThink
      *
      * @return $this
      */
-    private function parse()
+    protected function parse()
     {
         $requestURI = $this->fcRequest->getAttribute('requestURI');
         $type       = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
         [$type] = explode(';', $type);
-        $uriArray          = explode('?', $requestURI);
-        $this->queryString = $uriArray[ 1 ] ?? '';
-        
-        $this->parseHeaders()
-          ->parseCookie()
-          ->parseServerParams();
         
         if ($this->fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
-            $this->parseFiles();
+            $this->request->withFiles($this->parseFiles());
         }
         $this->request->withGet($this->fcRequest->getQueryParams())
           ->setMethod($this->fcRequest->getMethod())
           ->withInput(
             $this->fcRequest->getBody()
               ->getContents()
-          );
+          )
+          ->withHeader($this->parseHeaders())
+          ->withServer($this->parseServerParams())
+          ->withCookie($this->parseCookies());
         
         return $this;
     }
     
     /**
-     * @return $this
+     * @return array
      */
-    private function parseHeaders()
+    protected function parseHeaders()
     {
-        return $this->withHeader(
+        return array_merge(
+          ($this->request ? $this->request->header() : []),
           array_map(
             function ($item) {
                 return $item[ 0 ] ?? '';
@@ -212,9 +230,9 @@ class FcThink
     }
     
     /**
-     * @return $this
+     * @return array
      */
-    private function parseCookie()
+    protected function parseCookies()
     {
         $line    = preg_replace('/^Set-Cookie: /i', '', trim($this->fcRequest->getHeaderLine('Cookie')));
         $array   = explode(';', $line);
@@ -245,57 +263,57 @@ class FcThink
             }
         }
         
-        $this->request->withCookie(array_merge($this->fcRequest->getCookieParams(), $cookies[ 'cookies' ]));
-        
-        return $this;
+        return array_merge($this->fcRequest->getCookieParams(), $cookies[ 'cookies' ]);
     }
     
     /**
-     * @return $this
+     * @return array
      */
-    private function parseServerParams()
+    protected function parseServerParams()
     {
-        $servers = array_merge(
-          (array)$this->request->server(),
-          (array)$this->fcRequest->getServerParams(),
-          [
-            'DOCUMENT_ROOT'                  => $this->rootDir.'/public',
-              //'REMOTE_ADDR'                    => $request->getAttribute('clientIP'),
-              // 'REMOTE_PORT'                    => FC_CGI_REMOTE_PORT,
-            'SERVER_SOFTWARE'                => FC_CGI_SERVER_SOFTWARE,
-            'SERVER_PROTOCOL'                => FC_CGI_SERVER_PROTOCOL,
-            'SERVER_NAME'                    => $this->fcRequest->getHeaderLine('host'),
-            'SERVER_PORT'                    => '80',
-            'REQUEST_URI'                    => $this->fcRequest->getAttribute('requestURI'),
-            'REQUEST_METHOD'                 => $this->fcRequest->getMethod(),
-            'SCRIPT_NAME'                    => "/index.php",
-            'SCRIPT_FILENAME'                => $this->rootDir."/public/index.php",
-            'PATH_INFO'                      => $this->fcRequest->getAttribute('path'),
-            'PHP_SELF'                       => "/index.php?s=".($this->fcRequest->getAttribute('path')),
-            'QUERY_STRING'                   => $this->queryString,
-            'HTTP_HOST'                      => $this->fcRequest->getHeaderLine('host'),
-              //'HTTP_CONNECTION'=>'',
-            'HTTP_CACHE_CONTROL'             => $this->fcRequest->getHeaderLine('Cache-Control'),
-            'HTTP_UPGRADE_INSECURE_REQUESTS' => $this->fcRequest->getHeaderLine('Upgrade-Insecure-Requests'),
-            'HTTP_USER_AGENT'                => $this->fcRequest->getHeaderLine('User-Agent'),
-            'HTTP_ACCEPT'                    => $this->fcRequest->getHeaderLine('Accept'),
-            'HTTP_ACCEPT_LANGUAGE'           => $this->fcRequest->getHeaderLine('Accept-Language'),
-            'HTTP_COOKIE'                    => $this->fcRequest->getHeaderLine('Cookie'),
-          ]
+        return array_change_key_case(
+          array_merge(
+            (array)($this->request ? $this->request->server() : []),
+            (array)$this->fcRequest->getServerParams(),
+            [
+              'DOCUMENT_ROOT'                  => $this->config[ 'root' ].'/public',
+              'SERVER_SOFTWARE'                => FC_CGI_SERVER_SOFTWARE,
+              'SERVER_PROTOCOL'                => FC_CGI_SERVER_PROTOCOL,
+              'SERVER_NAME'                    => $this->fcRequest->getHeaderLine('host'),
+              'SERVER_PORT'                    => '80',
+              'REQUEST_URI'                    => $this->fcRequest->getAttribute('requestURI'),
+              'REQUEST_METHOD'                 => $this->fcRequest->getMethod(),
+              'SCRIPT_NAME'                    => "/index.php",
+              'SCRIPT_FILENAME'                => $this->config[ 'root' ]."/public/index.php",
+              'PATH_INFO'                      => $this->fcRequest->getAttribute('path'),
+              'PHP_SELF'                       => "/index.php?s=".($this->fcRequest->getAttribute('path')),
+              'QUERY_STRING'                   => array_pad(
+                explode('?', $this->fcRequest->getAttribute('requestURI')),
+                2,
+                ''
+              )[ 1 ],
+              'HTTP_HOST'                      => $this->fcRequest->getHeaderLine('host'),
+              'HTTP_CACHE_CONTROL'             => $this->fcRequest->getHeaderLine('Cache-Control'),
+              'HTTP_UPGRADE_INSECURE_REQUESTS' => $this->fcRequest->getHeaderLine('Upgrade-Insecure-Requests'),
+              'HTTP_USER_AGENT'                => $this->fcRequest->getHeaderLine('User-Agent'),
+              'HTTP_ACCEPT'                    => $this->fcRequest->getHeaderLine('Accept'),
+              'HTTP_ACCEPT_LANGUAGE'           => $this->fcRequest->getHeaderLine('Accept-Language'),
+              'HTTP_COOKIE'                    => $this->fcRequest->getHeaderLine('Cookie'),
+              'RUNTIME_PATH'                   => $this->config[ 'runtime_path' ],
+            ],
+            $this->context
+          ),
+          CASE_UPPER
         );
-        
-        $this->request->withServer($servers);
-        
-        return $this;
     }
     
     /**
-     * @return $this
+     * @return array
      * @link https://github.com/vangie/fc-file-transfer/blob/master/php/index.php
      */
-    private function parseFiles()
+    protected function parseFiles()
     {
-        $UPLOADED_DIR = $this->runtimePath.'/uploaded';
+        $UPLOADED_DIR = $this->config[ 'runtime_path' ].'/uploaded';
         if (!file_exists($UPLOADED_DIR)) {
             mkdir($UPLOADED_DIR, 0755, true);
         }
@@ -342,9 +360,7 @@ class FcThink
             }
         }
         
-        $this->request->withFiles($files);
-        
-        return $this;
+        return $files;
     }
     
 }
