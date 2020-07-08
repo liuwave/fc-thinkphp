@@ -273,7 +273,7 @@ cgi是通过函数计算提供的$GLOBALS['fcPhpCgiProxy'] 对象实现：
 
 CLI模式支持在thinkphp项目中调用函数计算内置功能的对象如fcLogger/fcPhpCgiProxy/fcSysLogger。
 
-参见[liuwave/think-log-driver-fc](https://github.com/liuwave/think-log-driver-fc)
+参见[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)
 
 
 
@@ -290,16 +290,18 @@ CLI模式支持在thinkphp项目中调用函数计算内置功能的对象如fcL
 
 参见：[挂载NAS访问](https://help.aliyun.com/document_detail/87401.html?source=5176.11533457&userCode=re2rax3m&type=copy)
 
-### 使用函数计算自带的日志功能
+### 日志服务
 
-参考：[liuwave/think-log-driver-fc](https://github.com/liuwave/think-log-driver-fc)
+兼容函数计算
+
+参考：[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)
 
 
 ### 开启调试
 
 使用fun部署代码时，会忽略`.env`，若要开启thinkphp的调试功能，需要在`test-think/test-fun/tp`(以上文为例)下添加`.env`文件，写入`APP_DEBUG = true`。
 
-若使用并开启了[liuwave/think-log-driver-fc](https://github.com/liuwave/think-log-driver-fc)可在函数计算的对应函数的日志查询功能中查看日志。
+若使用并开启了[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)可在函数计算的对应函数的日志查询功能中查看日志。
 
 
 
