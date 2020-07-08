@@ -3,6 +3,7 @@
 namespace app\controller;
 
 use app\BaseController;
+use app\Request;
 use think\facade\Log;
 use think\facade\View;
 
@@ -27,11 +28,22 @@ class Index extends BaseController
     public function info()
     {
         ob_start();
+        var_dump(getenv('securityToken'));
+        var_dump(getenv('accessKeySecret'));
+        var_dump(getenv('accessKeyID'));
+        var_dump(getenv('accessKeyIDxx'));//false
+        var_dump(getenv('FC_SERVER_LOG_LEVEL'));
+        var_dump(getenv('topic'));
+        var_dump(getenv('FC_QUALIFIER'));
+        var_dump(getenv('fc_qualifier'));//false
+        var_dump(getenv('RUNTIME_PATHX'));//false
+        
+        
         
 //        var_dump($this->request->server('context_credentials_accessKeyID'));
 //        var_dump($this->request->server('context_credentials_accessKeySecret'));
 //        var_dump($this->request->server('context_credentials_securityToken'));
-//        var_dump($this->app->getRuntimePath());
+        var_dump($this->app->getRuntimePath());
 //        var_dump($this->request->server());
 //        var_dump($this->request->header());
         phpinfo();
@@ -84,16 +96,29 @@ class Index extends BaseController
     }
     
     /**
+     * @param \app\Request $request
+     *
      * @return \think\response\Json
      */
-    public function upload()
+    public function upload(Request $request)
     {
-        $file       = \request()->file('file');
-        $filesystem = \think\facade\Filesystem::disk('oss');
-        $saveName   = $filesystem->putFile('/path/to/save/file', $file, 'md5');
-        $saveName   = str_replace('\\', '/', $saveName);
-        $fullName   = \think\facade\Filesystem::getDiskConfig('oss', 'url').'/'.$saveName;
-        return json(['full_url' => $fullName]);
+        
+        View::assign('isGet',$request->isGet());
+        View::assign('isPost',$request->isPost());
+        
+        if($request->isPost()){
+            $file       = \request()->file('file');
+            $filesystem = \think\facade\Filesystem::disk('oss');
+            $saveName   = $filesystem->putFile('/path/to/save/file', $file, 'md5');
+            $saveName   = str_replace('\\', '/', $saveName);
+            $fullName   = \think\facade\Filesystem::getDiskConfig('oss', 'url').'/'.$saveName;
+           
+            View::assign('full_url',$fullName);
+        }
+        
+        
+        return  View::fetch('upload');
+        
     }
     
     /**

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  
+  <title>fc-thinkphp:文件上传测试</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css"
+    media="screen"
+    rel="stylesheet"/>
+
+</head>
+<body>
+<div style="width:1040px;padding: 0 20px;margin: 0 auto;">
+  <div style="font-size: 16px;padding: 1rem 2rem 1rem 2rem;">
+    <h1>fc-thinkphp:文件上传测试</h1>
+    {if $isGet}
+    
+    <h2>上传表单</h2>
+   <p>
+    <form method="post" action="/upload" enctype="multipart/form-data">
+      <input type="file" id="file" name="file" value="浏览文件" />
+      <input type="submit" value="上传"/>
+    </form>
+    
+   </p>
+    {elseif $isPost /}
+    <h2>上传结果</h2>
+    <p>
+      上传成功，链接为:{$full_url}
+    </p>
+  
+    <p>
+      <a href="/upload">返回测试</a>
+    </p>
+    
+    {else /}
+    <p>
+      仅允许post和get请求
+    </p>
+    <p>
+      <a href="/upload">返回测试</a>
+    </p>
+  
+    {/if}
+    
+    <h2>教程</h2>
+    
+    <a href="https://github.com/liuwave/think-filesystem-driver-oss" target="_blank">liuwave/think-filesystem-driver-oss</a>
+    
+  </div>
+</div>
+</body>
+</html>

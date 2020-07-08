@@ -4,7 +4,7 @@ Resources:
   test-think:
     Type: 'Aliyun::Serverless::Service'
     Properties:
-      Role: 'acs:ram::1015034173526408:role/AliyunFCLogExecutionRole'
+      Role: 'acs:ram::1015034173526408:role/fc-think-test-role'
       LogConfig:
         Project: aliyun-fc-cn-beijing-9884c9bf-f2ea-52e1-ac98-a724f9cab91d
         Logstore: function-log
