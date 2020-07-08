@@ -1,4 +1,5 @@
 <?php
+
 use RingCentral\Psr7\Response;
 use liuwave\fc\think\FcThink;
 
@@ -12,10 +13,8 @@ function initializer($context) {
 
 function handler($request, $context) : Response
 {
+    $appPath = __DIR__.'/tp';
+    require $appPath.'/vendor/autoload.php';
     
-    $appPath=__DIR__ . '/tp';
-    require $appPath . '/vendor/autoload.php';
-    return (new FcThink($request, $appPath, '/tmp/'))
-      ->withHeader(['context' => $context])
-      ->run();
+    return (new FcThink($request, $context,['root'=> $appPath, 'runtime_path'=>'/tmp/']))->run();
 }

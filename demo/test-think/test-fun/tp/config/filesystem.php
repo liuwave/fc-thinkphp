@@ -20,5 +20,14 @@ return [
             'visibility' => 'public',
         ],
         // 更多的磁盘配置信息
+
+        'oss' => [
+          'type'         => \liuwave\think\filesystem\driver\Oss::class,
+          'accessId'     => '',//为空则使用函数计算 runtime context提供的 credentials
+          'accessSecret' => '******',//使用函数计算credentials时，可以为空
+          'bucket'       => 'oss-test-for-all',
+          'endpoint'     => 'oss-cn-beijing-internal.aliyuncs.com',
+          'url'          => '//oss-test-for-all.oss-cn-beijing.aliyuncs.com'
+        ],
     ],
 ];
