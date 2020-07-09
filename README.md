@@ -297,13 +297,91 @@ CLI模式支持在thinkphp项目中调用函数计算内置功能的对象如fcL
 参考：[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)
 
 
-### 开启调试
+### 开启调试、数据库配置
 
-使用fun部署代码时，会忽略`.env`，若要开启thinkphp的调试功能，需要在`test-think/test-fun/tp`(以上文为例)下添加`.env`文件，写入`APP_DEBUG = true`。
+使用fun部署代码时，会忽略`.env`，若要开启thinkphp的调试功能、配置数据库，可参照以下方法：
 
-若使用并开启了[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)可在函数计算的对应函数的日志查询功能中查看日志。
+方法一、在部署之后手动添加`env`文件
+
+在函数计算管理后台，将相关配置写入`.env`文件(`test-think/test-fun/tp/.env`(以上文为例))。
 
 
+方法二、在函数计算项目的根目录下的`/template.yml`设置环境变量（以上文为例）：
+
+>注： 需要在添加`PHP_`前缀，同时需要把`.`换成`_`, 并转化成大写，如 `PHP_APP_DEBUG` 、`PHP_DATABASE_TYPE`、`PHP_DATABASE_HOSTNAME`
+
+```yaml
+ROSTemplateFormatVersion: '2015-09-01'
+Transform: 'Aliyun::Serverless-2018-04-03'
+Resources: 
+  test-think: #这是服务
+    Type: 'Aliyun::Serverless::Service'
+    Properties:
+      Role: 'acs:ram::****:role/fc-think-test-role'
+      LogConfig:
+        Project: aliyun-fc-cn-beijing-*****
+        Logstore: function-log
+      InternetAccess: true
+    test-fun: # 函数名
+      Type: 'Aliyun::Serverless::Function'
+      Properties:
+        Handler: index.handler
+        Runtime: php7.2
+        Timeout: 60
+        MemorySize: 128
+        EnvironmentVariables: #环境变量
+          LD_LIBRARY_PATH: >-
+            /code/.fun/root/usr/local/lib:/code/.fun/root/usr/lib:/code/.fun/root/usr/lib/x86_64-linux-gnu:/code/.fun/root/usr/lib64:/code/.fun/root/lib:/code/.fun/root/lib/x86_64-linux-gnu:/code/.fun/root/python/lib/python2.7/site-packages:/code/.fun/root/python/lib/python3.6/site-packages:/code:/code/lib:/usr/local/lib
+          NODE_PATH: '/code/node_modules:/usr/local/lib/node_modules'
+          PATH: >-
+            /code/.fun/root/usr/local/bin:/code/.fun/root/usr/local/sbin:/code/.fun/root/usr/bin:/code/.fun/root/usr/sbin:/code/.fun/root/sbin:/code/.fun/root/bin:/code:/code/node_modules/.bin:/code/.fun/python/bin:/code/.fun/node_modules/.bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/sbin:/bin
+          PYTHONUSERBASE: /code/.fun/python
+          PHP_APP_DEBUG: true
+          PHP_DATABASE_TYPE: mysql
+          PHP_DATABASE_HOSTNAME: 127.0.0.1
+          PHP_DATABASE_DATABASE: 
+          PHP_DATABASE_USERNAME: root
+          PHP_DATABASE_PASSWORD: 
+          PHP_DATABASE_HOSTPORT: 3306
+          PHP_DATABASE_CHARSET: utf8
+          PHP_DATABASE_PREFIX:           
+        CodeUri: ./test-think/test-fun
+      Events:
+        test-fun:
+          Type: HTTP
+          Properties:
+            AuthType: anonymous
+            Methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - HEAD
+              - PATCH
+
+
+
+```
+    
+
+方法三、在函数计算后台更改
+
+函数 `概览` 界面中，点击 `配置` ，在最下方 添加 或 删除环境变量，`键`的格式 参照 `方法二`。
+
+
+
+若使用并开启了[liuwave/think-log-driver-sls](https://github.com/liuwave/think-log-driver-sls)可在函数计算的对应函数的日志查询功能中查看错误日志。
+
+
+### PHP环境配置
+
+可在根目录 添加 `extension`文件夹，在其中放入额外的配置 `.ini`,比如修改文件上传大小的限制：
+
+
+```ini
+#文件 /extension/filesize.ini
+upload_max_filesize = 6m
+```
 
 ### 文件上传，支持单文件和多文件上传
 
@@ -313,6 +391,7 @@ CLI模式支持在thinkphp项目中调用函数计算内置功能的对象如fcL
 
 > 注，函数计算限制，仅支持不超过6M大小的文件上传或下载，参见[使用限制](https://help.aliyun.com/document_detail/51907.html?source=5176.11533457&userCode=re2rax3m&type=copy)
 
+> 默认环境中，upload_max_filesize为 2M,可以参照上文[PHP环境配置](#PHP环境配置)进行更改
 
 
 ## BUG提交
