@@ -15,6 +15,7 @@ namespace think;
 require __DIR__.'/../vendor/autoload.php';
 
 // 执行HTTP应用并响应
+ini_set('upload_max_filesize','6M');
 
 $app = new App();
 $app->setRuntimePath(getenv('PHP_RUNTIME_PATH') ? : '/tmp/');

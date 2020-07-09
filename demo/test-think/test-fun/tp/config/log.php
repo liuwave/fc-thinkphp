@@ -53,7 +53,7 @@ return [
         //仅在函数计算 php runtime cli模式下有效，若为true,则以下配置可不填
         //若设置为true，但不在函数计算 cli模式下，会尝试使用日志服务 php SDK
         //参见[相关参考](#相关参考)
-      'source'      => 'think_self',//来源
+      'source'      => 'think_dev_master',//来源
       'credentials' => false, //如设置为false，且不在函数计算环境下，则不会写入日志
     
     ],
