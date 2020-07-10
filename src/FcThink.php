@@ -76,7 +76,7 @@ class FcThink
         }
         $this->config[ 'root' ]         = rtrim($this->config[ 'root' ], '/');
         $this->config[ 'runtime_path' ] = rtrim($this->config[ 'runtime_path' ], '/').'/';
-        putenv('PHP_RUNTIME_PATH='.$this->config[ 'runtime_path' ]);
+        
         if (!$this->config[ 'ignore_file' ]) {
             $path     = $this->fcRequest->getAttribute('path');
             $filename = rawurldecode($this->config[ 'root' ].'/public'.$path);
@@ -92,13 +92,6 @@ class FcThink
         }
         
         $this->filename = null;
-        
-        if ($this->config[ 'is_cli' ]) {
-            $this->app = new App($this->config[ 'root' ]);
-            $this->app->setRuntimePath($this->config[ 'runtime_path' ]);
-            $this->request = $this->app->request;
-            $this->parse();
-        }
     }
     
     /**
@@ -121,20 +114,43 @@ class FcThink
         }
         
         if ($this->config[ 'is_cli' ]) {
+            //本地测试环境适配
+            if (getenv('local')) {
+                putenv('accessKeyID='.(getenv('FC_ACCESS_KEY_ID') ? : ""));
+                putenv('accessKeySecret='.(getenv('FC_ACCESS_KEY_SECRET') ? : ""));
+                putenv('topic='.(getenv('FC_SERVICE_NAME') ? : ""));
+                putenv('FC_QUALIFIER=LOCAL_TEST');
+            }
+            
+            $this->app = new App($this->config[ 'root' ]);
+            $this->app->setRuntimePath($this->config[ 'runtime_path' ]);
+            $this->request = $this->app->request;
+            $this->parse();
             $http     = $this->app->http;
             $response = $http->run($this->request);
             $http->end($response);
-            
             $response->header(['Set-Cookie' => $this->getHeaderCookie()]);
             
             return new Response($response->getCode(), $response->getHeader(), $response->getContent());
         }
         else {
+            //设置runtime_path
+            $parseServerParams = $this->parseServerParams();
+            
+            //本地测试环境适配
+            if (getenv('local')) {
+                $parseServerParams[ 'accessKeyID' ]     = getenv('FC_ACCESS_KEY_ID') ? : "";
+                $parseServerParams[ 'accessKeySecret' ] = getenv('FC_ACCESS_KEY_SECRET') ? : "";
+                $parseServerParams[ 'topic' ]           = getenv('FC_SERVICE_NAME') ? : "";
+                $parseServerParams[ 'FC_QUALIFIER' ]    = 'LOCAL_TEST';
+            }
+            $parseServerParams[ 'PHP_RUNTIME_PATH' ] = $this->config[ 'runtime_path' ];
+            
             return $GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
               $this->fcRequest,
               $this->config[ 'root' ].'/public',
               "index.php",
-              $this->parseServerParams(),
+              $parseServerParams,
               ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
             );
         }
@@ -195,8 +211,7 @@ class FcThink
      */
     protected function parse()
     {
-        $requestURI = $this->fcRequest->getAttribute('requestURI');
-        $type       = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
+        $type = strtolower($this->fcRequest->getHeaderLine('Content-Type'));
         [$type] = explode(';', $type);
         
         if ($this->fcRequest->getMethod() === "POST" && $type === 'multipart/form-data') {
