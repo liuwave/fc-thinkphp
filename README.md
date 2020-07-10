@@ -339,12 +339,12 @@ Resources:
           PHP_APP_DEBUG: true
           PHP_DATABASE_TYPE: mysql
           PHP_DATABASE_HOSTNAME: 127.0.0.1
-          PHP_DATABASE_DATABASE: 
+          PHP_DATABASE_DATABASE: 'test'
           PHP_DATABASE_USERNAME: root
-          PHP_DATABASE_PASSWORD: 
+          PHP_DATABASE_PASSWORD: 'test'
           PHP_DATABASE_HOSTPORT: 3306
           PHP_DATABASE_CHARSET: utf8
-          PHP_DATABASE_PREFIX:           
+          PHP_DATABASE_PREFIX: 'p_'
         CodeUri: ./test-think/test-fun
       Events:
         test-fun:
