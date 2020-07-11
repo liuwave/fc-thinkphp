@@ -11,6 +11,7 @@ namespace liuwave\fc\think;
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
 use Psr\Http\Message\ServerRequestInterface;
+use Exception;
 use RingCentral\Psr7\Request;
 use RingCentral\Psr7\Response;
 use think\App;
@@ -21,10 +22,6 @@ use think\facade\Cookie;
  */
 class FcThink
 {
-    /**
-     * @var \think\App
-     */
-    protected $app;
     
     /**
      * @var \think\Request
@@ -52,20 +49,15 @@ class FcThink
     protected $context = [];
     
     /**
-     * @var null
-     */
-    private $filename;
-    
-    /**
      * FcThink constructor.
      *
-     * @param ServerRequestInterface $fcRequest
-     * @param array                  $context
-     * @param array                  $config
+     * @param ServerRequestInterface|null $fcRequest
+     * @param array                       $context
+     * @param array                       $config
      */
     public function __construct(
-      ServerRequestInterface $fcRequest,
-      array $context,
+      ?ServerRequestInterface $fcRequest = null,
+      array $context = [],
       $config = []
     ) {
         $this->fcRequest = $fcRequest;
@@ -76,6 +68,18 @@ class FcThink
         }
         $this->config[ 'root' ]         = rtrim($this->config[ 'root' ], '/');
         $this->config[ 'runtime_path' ] = rtrim($this->config[ 'runtime_path' ], '/').'/';
+    }
+    
+    /**
+     *
+     * @return Response
+     * @throws \Exception
+     */
+    public function run()
+    {
+        if (!$this->fcRequest || !($this->fcRequest instanceof ServerRequestInterface)) {
+            throw new Exception('当前方法仅能在HTTP触发器中使用');
+        }
         
         if (!$this->config[ 'ignore_file' ]) {
             $path     = $this->fcRequest->getAttribute('path');
@@ -85,32 +89,18 @@ class FcThink
               strtolower($pathInfo[ 'extension' ]) !== 'php' &&
               file_exists($filename) &&
               is_file($filename)) {
-                $this->filename = $filename;
+                $handle   = fopen($filename, "r");
+                $contents = fread($handle, filesize($filename));
+                fclose($handle);
                 
-                return;
+                return new Response(
+                  200, [
+                  'Content-Type'  => $GLOBALS[ 'fcPhpCgiProxy' ]->getMimeType($filename),
+                  'Cache-Control' => "max-age=8640000",
+                  'Accept-Ranges' => 'bytes',
+                ], $contents
+                );
             }
-        }
-        
-        $this->filename = null;
-    }
-    
-    /**
-     * @return Response
-     */
-    public function run()
-    {
-        if ($this->filename) {
-            $handle   = fopen($this->filename, "r");
-            $contents = fread($handle, filesize($this->filename));
-            fclose($handle);
-            
-            return new Response(
-              200, [
-              'Content-Type'  => $GLOBALS[ 'fcPhpCgiProxy' ]->getMimeType($this->filename),
-              'Cache-Control' => "max-age=8640000",
-              'Accept-Ranges' => 'bytes',
-            ], $contents
-            );
         }
         
         if ($this->config[ 'is_cli' ]) {
@@ -122,11 +112,11 @@ class FcThink
                 putenv('FC_QUALIFIER=LOCAL_TEST');
             }
             
-            $this->app = new App($this->config[ 'root' ]);
-            $this->app->setRuntimePath($this->config[ 'runtime_path' ]);
-            $this->request = $this->app->request;
+            $app = new App($this->config[ 'root' ]);
+            $app->setRuntimePath($this->config[ 'runtime_path' ]);
+            $this->request = $app->request;
             $this->parse();
-            $http     = $this->app->http;
+            $http     = $app->http;
             $response = $http->run($this->request);
             $http->end($response);
             $response->header(['Set-Cookie' => $this->getHeaderCookie()]);
@@ -377,6 +367,18 @@ class FcThink
         }
         
         return $files;
+    }
+    
+    /**
+     * @param \RingCentral\Psr7\Request $fcRequest
+     *
+     * @return \liuwave\fc\think\FcThink
+     */
+    public function setFcRequest(\RingCentral\Psr7\Request $fcRequest) : self
+    {
+        $this->fcRequest = $fcRequest;
+        
+        return $this;
     }
     
 }
