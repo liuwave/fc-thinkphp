@@ -6,4 +6,4 @@
 .DS_Store
 test
 composer.lock
-demo/template.yml
+/demo
