@@ -8,6 +8,7 @@
 
 namespace liuwave\fc\think;
 
+use finfo;
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
 use Psr\Http\Message\ServerRequestInterface;
@@ -82,8 +83,7 @@ class FcThink
         }
         
         if (!$this->config[ 'ignore_file' ]) {
-            $path     = $this->fcRequest->getAttribute('path');
-            $filename = rawurldecode($this->config[ 'root' ].'/public'.$path);
+            $filename = rawurldecode($this->config[ 'root' ].'/public'.($this->fcRequest->getAttribute('path')));
             $pathInfo = pathinfo($filename);
             if (isset($pathInfo[ 'extension' ]) &&
               strtolower($pathInfo[ 'extension' ]) !== 'php' &&
@@ -92,10 +92,10 @@ class FcThink
                 $handle   = fopen($filename, "r");
                 $contents = fread($handle, filesize($filename));
                 fclose($handle);
-                
+               
                 return new Response(
                   200, [
-                  'Content-Type'  => $GLOBALS[ 'fcPhpCgiProxy' ]->getMimeType($filename),
+                  'Content-Type'  => (new finfo(FILEINFO_MIME_TYPE))->file($filename),
                   'Cache-Control' => "max-age=8640000",
                   'Accept-Ranges' => 'bytes',
                 ], $contents
