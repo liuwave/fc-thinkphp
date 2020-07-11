@@ -83,8 +83,8 @@ class FcThink
             $pathInfo = pathinfo($filename);
             if (isset($pathInfo[ 'extension' ]) &&
               strtolower($pathInfo[ 'extension' ]) !== 'php' &&
-              file_exists($this->filename) &&
-              is_file($this->filename)) {
+              file_exists($filename) &&
+              is_file($filename)) {
                 $this->filename = $filename;
                 
                 return;
