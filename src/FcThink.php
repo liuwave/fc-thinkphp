@@ -42,6 +42,7 @@ class FcThink
       'ignore_file'  => false,
       'root'         => '/code/tp',
       'runtime_path' => '/tmp/',
+      'host'         => '',
     ];
     
     /**
@@ -92,7 +93,7 @@ class FcThink
                 $handle   = fopen($filename, "r");
                 $contents = fread($handle, filesize($filename));
                 fclose($handle);
-               
+                
                 return new Response(
                   200, [
                   'Content-Type'  => (new finfo(FILEINFO_MIME_TYPE))->file($filename),
@@ -102,6 +103,8 @@ class FcThink
                 );
             }
         }
+        
+        $this->config[ 'host' ] = $this->config[ 'host' ] ? : $this->fcRequest->getHeaderLine('host');
         
         if ($this->config[ 'is_cli' ]) {
             //本地测试环境适配
@@ -286,20 +289,20 @@ class FcThink
               'DOCUMENT_ROOT'                  => $this->config[ 'root' ].'/public',
               'SERVER_SOFTWARE'                => FC_CGI_SERVER_SOFTWARE,
               'SERVER_PROTOCOL'                => FC_CGI_SERVER_PROTOCOL,
-              'SERVER_NAME'                    => $this->fcRequest->getHeaderLine('host'),
+              'SERVER_NAME'                    => $this->config[ 'host' ],
               'SERVER_PORT'                    => '80',
               'REQUEST_URI'                    => $this->fcRequest->getAttribute('requestURI'),
               'REQUEST_METHOD'                 => $this->fcRequest->getMethod(),
               'SCRIPT_NAME'                    => "/index.php",
               'SCRIPT_FILENAME'                => $this->config[ 'root' ]."/public/index.php",
               'PATH_INFO'                      => $this->fcRequest->getAttribute('path'),
-              'PHP_SELF'                       => "/index.php?s=".($this->fcRequest->getAttribute('path')),
+              'PHP_SELF'                       => "/index.php".($this->fcRequest->getAttribute('path')),
               'QUERY_STRING'                   => array_pad(
                 explode('?', $this->fcRequest->getAttribute('requestURI')),
                 2,
                 ''
               )[ 1 ],
-              'HTTP_HOST'                      => $this->fcRequest->getHeaderLine('host'),
+              'HTTP_HOST'                      => $this->config[ 'host' ],
               'HTTP_CACHE_CONTROL'             => $this->fcRequest->getHeaderLine('Cache-Control'),
               'HTTP_UPGRADE_INSECURE_REQUESTS' => $this->fcRequest->getHeaderLine('Upgrade-Insecure-Requests'),
               'HTTP_USER_AGENT'                => $this->fcRequest->getHeaderLine('User-Agent'),

@@ -80,6 +80,7 @@ function handler($request, $context) : Response
       'ignore_file'  => false,//是否检测请求路径为存在的文件，如果忽略，则交由thinkphp 入库函数处理，默认为false，即若请求路径为文件(php后缀名除外)，直接返回文件内容
       'root'         => '/code/tp',//thinkphp项目的root_path
       'runtime_path' => '/tmp/',//缓存目录
+      'host' => '',//自定义域名，默认为 HTTP_HOST
     ];
 ```
 
