@@ -139,13 +139,29 @@ class FcThink
             }
             $parseServerParams[ 'PHP_RUNTIME_PATH' ] = $this->config[ 'runtime_path' ];
             
-            return $GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
-              $this->fcRequest,
-              $this->config[ 'root' ].'/public',
-              "index.php",
-              $parseServerParams,
-              ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
-            );
+            try{
+                $response=$GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
+                  $this->fcRequest,
+                  $this->config[ 'root' ].'/public',
+                  "index.php",
+                  $parseServerParams,
+                  ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
+                );
+            }
+            catch(\Exception $exception){
+                $GLOBALS[ 'fcPhpCgiProxy' ]=new \ServerlessFC\PhpCgiProxy();
+                $response=$GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
+                  $this->fcRequest,
+                  $this->config[ 'root' ].'/public',
+                  "index.php",
+                  $parseServerParams,
+                  ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
+                );
+            }
+            finally {
+                return  $response;
+            }
+            
         }
     }
     
