@@ -8,6 +8,7 @@
 
 namespace liuwave\fc\think;
 
+use app\ExceptionHandle;
 use finfo;
 use liuwave\fc\think\multipart\Parser;
 use liuwave\fc\think\multipart\UploadedFile;
@@ -140,6 +141,9 @@ class FcThink
             $parseServerParams[ 'PHP_RUNTIME_PATH' ] = $this->config[ 'runtime_path' ];
             
             try{
+                if(!$GLOBALS[ 'fcPhpCgiProxy' ]){
+                    $GLOBALS[ 'fcPhpCgiProxy' ]=new \ServerlessFC\PhpCgiProxy();
+                }
                 $response=$GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
                   $this->fcRequest,
                   $this->config[ 'root' ].'/public',
@@ -147,19 +151,11 @@ class FcThink
                   $parseServerParams,
                   ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
                 );
+                
+                return $response;
             }
             catch(\Exception $exception){
-                $GLOBALS[ 'fcPhpCgiProxy' ]=new \ServerlessFC\PhpCgiProxy();
-                $response=$GLOBALS[ 'fcPhpCgiProxy' ]->requestPhpCgi(
-                  $this->fcRequest,
-                  $this->config[ 'root' ].'/public',
-                  "index.php",
-                  $parseServerParams,
-                  ['debug_show_cgi_params' => false, 'readWriteTimeout' => 15000]
-                );
-            }
-            finally {
-                return  $response;
+                throw $exception;
             }
             
         }
@@ -177,7 +173,7 @@ class FcThink
         foreach ($context as $key => $value) {
             if (is_array($value)) {
                 foreach ($value as $subKey => $subValue) {
-                    $result[ "context_{$key}_{$subKey}" ] = (string)$subValue;
+                    $result[ "context_{$key}_{$subKey}" ] = !is_string($subValue)?json_encode($subValue):$subValue;
                 }
             }
             else {
